@@ -61,3 +61,5 @@ module.exports = {
 //connectionUser.js
 connectToConfig(pool1, poolConnect1, query1)// query for database 1 
 connectToConfig(pool2, poolConnect2, query2)// query for database 2
+
+//mssql library and docs link - https://www.npmjs.com/package/mssql
