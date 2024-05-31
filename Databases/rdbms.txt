@@ -1,0 +1,2 @@
+https://stackoverflow.com/questions/144283/what-is-the-difference-between-varchar-and-nvarchar
+
