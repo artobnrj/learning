@@ -1,0 +1,97 @@
+1. Open CMD and ssh with root@IP.Add.re.ss
+-- enter root password
+
+2. If you want you can run 
+-- sudo apt update
+-- sudo apt upgrade
+
+This will update all packages in your server
+
+3. Install NVM
+-- curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+-- restart vps
+
+Tip: check ubuntu version -- lsb_release -a
+
+4. install github cli - 
+-- sudo apt install gh
+
+5. Login to github
+-- gh auth Login
+
+6. Clone repositories
+7. cd into server
+-- copy env vars
+--- nano .env 
+--- Paste env vars
+--- Ctrl + O - used to save current file
+--- Ctrl + X - exit nano editor
+--- View env vars : cat .env
+
+8. Install pm2 - npm i -g pm2
+-- Refer pm2 docs for commands
+https://pm2.keymetrics.io/docs/usage/quick-start/
+
+9. For front end create a production build with
+-- npm run build
+
+10. allow/deny ports
+
+-- sudo ufw status -- shows all rules
+-- sudo ufw allow/deny PORT
+
+11. install nginx for front end
+-- sudo apt install nginx
+-- cd /etc/nginx/sites-enabled
+-- cat default.conf
+-- rm default.conf
+-- cd ../sites-available
+-- nano IP_Address.conf
+
+server {
+    listen 3000;
+    server_name yourdomain.com www.yourdomain.com;
+
+    root /root/aci-app/build;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+-- test nginx configuration
+-- sudo nginx -t
+
+12. Create symbolic link between sites-available and sites-enabled
+a) cd into sites-enabled
+b) ln -s ../sites-available/IP_Address.conf
+c) restart nginx - systemctl restart nginx (need to do this everytime something changes in sites-enabled)
+
+nginx commands - https://phoenixnap.com/kb/nginx-start-stop-restart
+
+13. Point domain nameservers from domain provider to nameservers of hosting provider. If host === provider do nothing.
+14. create subdomain for backend. (type: A, prefix: api/blog/abc/xyz, value: IP of the host, ttl: default)
+
+15. Go to DNS settings 
+
+add these 4 A values
+
+type: A                     |       type: A
+name: @                     |       name: www
+content: Host IP address    |       content Host IP address
+
+type: A                     |       type: A
+name: api                   |       name: www.api
+content: Host IP address    |       content Host IP address
+
+16. Secure all urls with ssl certs.
+
+--sudo apt-get install certbot python3-certbot-nginx
+--sudo certbot --nginx -d url -d www.url
+--sudo certbot --nginx -d api.url -d www.api.url
+
+
+
+
+
