@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+.venv/
+# agent output - keep the folder, not its files
+workspace/*
+!workspace/.gitkeep

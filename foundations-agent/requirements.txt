@@ -1,0 +1,4 @@
+anthropic>=2.8.0
+
+# development
+pytest>=8
