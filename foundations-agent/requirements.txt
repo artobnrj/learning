@@ -1,0 +1,5 @@
+openai>=3.0
+python-dotenv>=1.0
+
+# development
+pytest>=8
