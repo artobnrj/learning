@@ -1,6 +1,6 @@
 """Skills 3 & 4: read_file / write_file - sandboxed to the workspace folder.
 
-Claude only ever sees paths relative to WORKSPACE. Any path that resolves
+The model only ever sees paths relative to WORKSPACE. Any path that resolves
 outside it (../, absolute paths, symlinks out) is rejected.
 """
 

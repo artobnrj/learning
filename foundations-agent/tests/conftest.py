@@ -1,4 +1,3 @@
-import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -10,9 +9,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Make `import agent` / `import skills` work no matter where pytest is started from.
 sys.path.insert(0, str(ROOT))
-# Live tests read ANTHROPIC_API_KEY from .env too, just like `python agent.py`.
+# Live tests read LLM_BASE_URL / LLM_MODEL from .env too, just like `python agent.py`.
 load_dotenv(ROOT / ".env")
 
+from agent import settings  # noqa: E402
 from skills import files  # noqa: E402
 
 
@@ -34,12 +34,29 @@ def _has_network() -> bool:
         return False
 
 
+def _model_server_up() -> bool:
+    """True if something answers the OpenAI-compatible /models endpoint (e.g. Ollama)."""
+    cfg = settings()
+    request = urllib.request.Request(
+        cfg["base_url"].rstrip("/") + "/models",
+        headers={"Authorization": f"Bearer {cfg['api_key']}"},
+    )
+    try:
+        urllib.request.urlopen(request, timeout=3).close()
+        return True
+    except OSError:
+        return False
+
+
 def pytest_collection_modifyitems(config, items):
-    has_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    server = None
     network = None
     for item in items:
-        if "live" in item.keywords and not has_key:
-            item.add_marker(pytest.mark.skip(reason="ANTHROPIC_API_KEY not set"))
+        if "live" in item.keywords:
+            if server is None:
+                server = _model_server_up()
+            if not server:
+                item.add_marker(pytest.mark.skip(reason=f"no model server at {settings()['base_url']}"))
         if "network" in item.keywords:
             if network is None:
                 network = _has_network()

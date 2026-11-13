@@ -1,7 +1,10 @@
-"""Level 4: end-to-end against the real Claude API.
+"""Level 4: end to end against a real model server (Ollama by default).
 
-Skipped unless ANTHROPIC_API_KEY is set. Costs a few cents per run.
-Run only these:  pytest -m live -v
+Skipped unless a model server answers at LLM_BASE_URL (default http://localhost:11434/v1).
+Free to run - the model is on your machine. Run only these:  pytest -m live -v
+
+Small models are not perfectly consistent, so a rare failure here can be the
+model's choice rather than a bug; re-run before digging in.
 """
 
 import pytest

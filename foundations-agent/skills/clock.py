@@ -11,14 +11,15 @@ from . import skill
     name="get_current_time",
     description=(
         "Get the current date and time. Pass an IANA timezone name such as "
-        "'Asia/Tokyo' or 'America/New_York', or null for UTC."
+        "'Asia/Tokyo' or 'America/New_York', or leave it out for UTC."
     ),
     properties={
         "timezone": {
-            "type": ["string", "null"],
-            "description": "IANA timezone name, or null for UTC.",
+            "type": "string",
+            "description": "IANA timezone name. Optional; omit for UTC.",
         }
     },
+    required=[],
 )
 def get_current_time(timezone: str | None = None) -> str:
     if not timezone:
