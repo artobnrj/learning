@@ -4,9 +4,14 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
 
 # Make `import agent` / `import skills` work no matter where pytest is started from.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(ROOT))
+# Live tests read ANTHROPIC_API_KEY from .env too, just like `python agent.py`.
+load_dotenv(ROOT / ".env")
 
 from skills import files  # noqa: E402
 

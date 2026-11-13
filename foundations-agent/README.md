@@ -43,9 +43,11 @@ Needs Python 3.10+.
 cd foundations-agent
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...                   # from https://console.anthropic.com
+# put your key in .env (from https://console.anthropic.com):  ANTHROPIC_API_KEY=sk-ant-...
 python agent.py
 ```
+
+`.env` sits next to `agent.py` and is gitignored, so your key never gets committed. An `ANTHROPIC_API_KEY` environment variable also works and takes precedence over `.env`.
 
 Example session:
 

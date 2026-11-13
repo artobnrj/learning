@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 from typing import Any, Callable
 
 import anthropic
+from dotenv import load_dotenv
 
 from skills import TOOLS, run_skill
 
@@ -116,6 +118,7 @@ class Agent:
 
 
 def main() -> None:
+    load_dotenv(Path(__file__).with_name(".env"))  # variables already in the environment win
     agent = Agent()
     print("Foundations Agent - skills: " + ", ".join(t["name"] for t in TOOLS))
     print("Type a request, or 'quit' to exit.\n")
