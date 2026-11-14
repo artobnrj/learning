@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F6E64">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Monthly Ledger</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+/* Layout: one narrow column. Month total on top, a share bar that breaks the
+   total into categories, then the category ledger. Fixed tab bar at the bottom. */
+:root {
+  --bg: #F2F4F1; --surface: #FFFFFF; --ink: #17211F; --muted: #5F6C68; --line: #DCE2DD;
+  --accent: #0F6E64; --accent-ink: #FFFFFF; --danger: #B3392F; --wash: #E6EBE7;
+  --c0: #0F6E64; --c1: #D98A14; --c2: #7A4FC0; --c3: #C8456B;
+  --c4: #2F7FD0; --c5: #6B8E23; --c6: #C4582A; --c7: #5A6B7A;
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111716; --surface: #1A2221; --ink: #E8EEEB; --muted: #9AA8A3; --line: #2B3634;
+    --accent: #4FC4B4; --accent-ink: #06211D; --danger: #F08A7E; --wash: #222C2A;
+    --c0: #4FC4B4; --c1: #F0B347; --c2: #B095F0; --c3: #F0839F;
+    --c4: #74B3F2; --c5: #A9C95C; --c6: #F0915F; --c7: #A3B3C2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111716; --surface: #1A2221; --ink: #E8EEEB; --muted: #9AA8A3; --line: #2B3634;
+  --accent: #4FC4B4; --accent-ink: #06211D; --danger: #F08A7E; --wash: #222C2A;
+  --c0: #4FC4B4; --c1: #F0B347; --c2: #B095F0; --c3: #F0839F;
+  --c4: #74B3F2; --c5: #A9C95C; --c6: #F0915F; --c7: #A3B3C2;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 15px/1.45 var(--body);
+  -webkit-text-size-adjust: 100%;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, p, ul { margin: 0; }
+ul { padding: 0; list-style: none; }
+
+.app {
+  max-width: 34rem; margin: 0 auto;
+  padding-block: 20px 96px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px;
+}
+#view { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+/* Month header */
+.month-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.month-head h1, .page-title { font: 600 1.25rem/1.2 var(--display); text-wrap: balance; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--surface); font-size: 1.25rem; line-height: 1;
+  display: grid; place-items: center;
+}
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.link-btn { background: none; border: 0; padding: 4px 0; color: var(--accent); font-weight: 500; text-align: left; }
+
+/* Total */
+.total { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.figure { font: 700 clamp(2.5rem, 13vw, 3.5rem)/1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.sub { color: var(--muted); font-size: .875rem; }
+.share-bar { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line); margin-top: 8px; }
+.share-bar span { background: var(--c); min-width: 3px; }
+
+/* Category ledger */
+.cats { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.cat + .cat { border-top: 1px solid var(--line); }
+.cat-row {
+  width: 100%; min-height: 56px; padding: 10px 14px; border: 0; background: none; text-align: left;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.cat-name { font-weight: 500; overflow-wrap: anywhere; }
+.cat-share { color: var(--muted); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+.cat-amt { font: 600 1.0625rem var(--display); font-variant-numeric: tabular-nums; }
+.cat.is-open > .cat-row { background: var(--wash); }
+
+.panel { padding: 14px; display: flex; flex-direction: column; gap: 14px; background: var(--wash); border-top: 1px solid var(--line); }
+.entry-form { display: flex; flex-direction: column; gap: 8px; }
+.field {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px;
+}
+.field:focus-within { border-color: var(--accent); }
+.field input { flex: 1; min-width: 0; border: 0; background: none; padding: 11px 0; font-size: 16px; outline: none; }
+.field.amount { font: 600 1.25rem var(--display); }
+.field.amount input { font: inherit; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.field .unit { color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 8rem; }
+.btn {
+  min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); font-weight: 600;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--danger); }
+.btn.small { min-height: 36px; padding: 0 12px; font-weight: 500; font-size: .875rem; flex: 0 0 auto; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.entries { display: flex; flex-direction: column; }
+.entries li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 4px 0; }
+.entries li + li { border-top: 1px dashed var(--line); }
+.e-amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.e-amt.minus { color: var(--danger); }
+.e-meta { color: var(--muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.x-btn { width: 36px; height: 36px; border: 0; background: none; color: var(--muted); font-size: 1.125rem; border-radius: 50%; }
+.panel-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.panel-foot p { flex: 1 1 100%; font-size: .875rem; }
+.panel-foot .field { flex: 1 1 10rem; }
+
+/* Add category */
+.add-cat { display: flex; flex-direction: column; gap: 10px; }
+.add-cat form { display: flex; gap: 8px; }
+.add-cat .field { flex: 1; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: 36px; padding: 0 14px; border-radius: 18px; border: 1px dashed var(--muted); background: none; font-size: .875rem; }
+.empty { color: var(--muted); padding: 18px 14px; }
+
+/* All months */
+.year { display: flex; flex-direction: column; gap: 8px; }
+.year-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.year-head h2 { font: 600 1rem var(--display); }
+.year-head span { color: var(--muted); font-size: .875rem; font-variant-numeric: tabular-nums; }
+.m-row {
+  width: 100%; border: 0; background: none; text-align: left; padding: 12px 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline;
+}
+.m-name { font-weight: 500; }
+.m-name small { color: var(--accent); font-weight: 600; font-size: .75rem; margin-left: 6px; }
+.m-amt { font: 600 1.0625rem var(--display); font-variant-numeric: tabular-nums; }
+.m-meta { color: var(--muted); font-size: .8125rem; }
+.m-bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.m-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+/* Export */
+.block { display: flex; flex-direction: column; gap: 10px; }
+.block h2 { font: 600 1rem var(--display); }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg button { flex: 1; min-height: 44px; border: 0; background: none; font-weight: 500; padding: 0 8px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.x-item { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.x-item + .x-item { border-top: 1px solid var(--line); }
+.x-item strong { font-weight: 600; }
+.x-item p, .note { color: var(--muted); font-size: .875rem; }
+textarea.out { width: 100%; min-height: 9rem; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px; }
+.file { display: flex; flex-direction: column; gap: 6px; }
+.file input { font-size: 14px; max-width: 100%; }
+
+/* Tabs + toast */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.tabs div { max-width: 34rem; margin: 0 auto; display: flex; }
+.tabs a {
+  flex: 1; min-height: 56px; display: grid; place-items: center;
+  color: var(--muted); text-decoration: none; font-weight: 500; font-size: .875rem;
+  border-top: 2px solid transparent; margin-top: -1px;
+}
+.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--accent); font-weight: 600; }
+#toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  max-width: min(30rem, calc(100% - 32px)); padding: 10px 16px; border-radius: 10px;
+  background: var(--ink); color: var(--bg); font-size: .875rem; font-weight: 500; text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="app"><main id="view"></main></div>
+<nav class="tabs" aria-label="Sections"><div id="tabs"></div></nav>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Monthly Ledger: vanilla JS, no build step, data in IndexedDB.
+
+   Where to extend:
+     CONFIG      currency, locale, suggested categories
+     MIGRATIONS  append a function to change the database schema
+     createStorage()  swap the storage backend (same loadAll/write contract)
+     actions     every data change goes through one of these
+     EXPORTERS   add an object to add an export format
+     VIEWS       add an object to add a tab/screen
+   Money is stored as integer minor units (paise) to avoid float drift.
+   Records:
+     category { id, month:"YYYY-MM", name, color, createdAt }
+     entry    { id, categoryId, month:"YYYY-MM", amount (signed), note, at }
+   ===================================================================== */
+
+/* ---------- 1. Config ---------- */
+const CONFIG = {
+  appId: 'monthly-ledger',
+  schema: 1,
+  dbName: 'monthly-ledger',
+  locale: 'en-IN',
+  currency: 'INR',
+  suggested: ['Food', 'Travel', 'Groceries', 'Rent', 'Bills', 'Shopping'],
+  colorCount: 8,
+};
+
+/* ---------- 2. Helpers ---------- */
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+const monthKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const monthDate = (key) => { const [y, m] = key.split('-').map(Number); return new Date(y, m - 1, 1); };
+const shiftMonth = (key, n) => { const d = monthDate(key); d.setMonth(d.getMonth() + n); return monthKey(d); };
+const daysIn = (key) => { const d = monthDate(key); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); };
+const monthLabel = (key, opts = { month: 'long', year: 'numeric' }) => monthDate(key).toLocaleDateString(CONFIG.locale, opts);
+const stamp = (ts) => new Date(ts).toLocaleString(CONFIG.locale, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
+const money = (minor) => {
+  const v = minor / 100;
+  return new Intl.NumberFormat(CONFIG.locale, {
+    style: 'currency', currency: CONFIG.currency,
+    minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2,
+  }).format(v);
+};
+const currencySymbol = (() => {
+  try {
+    return new Intl.NumberFormat(CONFIG.locale, { style: 'currency', currency: CONFIG.currency })
+      .formatToParts(0).find((p) => p.type === 'currency').value;
+  } catch (e) { return CONFIG.currency; }
+})();
+/** "1,250.50" -> 125050 (minor units). Returns null when not a positive amount. */
+const parseAmount = (text) => {
+  const n = Number(String(text).replace(/[^0-9.]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+};
+
+/* ---------- 3. Storage ---------- */
+/* Each migration upgrades the schema by one version. Never edit an old one;
+   append a new function and the version number follows automatically. */
+const MIGRATIONS = [
+  (db) => {
+    const c = db.createObjectStore('categories', { keyPath: 'id' });
+    c.createIndex('month', 'month');
+    const e = db.createObjectStore('entries', { keyPath: 'id' });
+    e.createIndex('month', 'month');
+    e.createIndex('categoryId', 'categoryId');
+  },
+];
+const STORES = ['categories', 'entries'];
+
+function openIndexedDb() {
+  return new Promise((resolve, reject) => {
+    let req;
+    try { req = indexedDB.open(CONFIG.dbName, MIGRATIONS.length); } catch (e) { reject(e); return; }
+    const timer = setTimeout(() => reject(new Error('IndexedDB timed out')), 4000);
+    req.onupgradeneeded = (ev) => {
+      for (let v = ev.oldVersion; v < MIGRATIONS.length; v++) MIGRATIONS[v](req.result, req.transaction);
+    };
+    req.onsuccess = () => { clearTimeout(timer); resolve(req.result); };
+    req.onerror = () => { clearTimeout(timer); reject(req.error); };
+  });
+}
+
+/** Storage contract: { kind, loadAll() -> {categories, entries}, write(ops) }.
+    An op is { store, put: record } or { store, del: id }. A write is atomic. */
+async function createStorage() {
+  try {
+    const db = await openIndexedDb();
+    const getAll = (store) => new Promise((res, rej) => {
+      const r = db.transaction(store).objectStore(store).getAll();
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    return {
+      kind: 'indexeddb',
+      loadAll: async () => ({ categories: await getAll('categories'), entries: await getAll('entries') }),
+      write: (ops) => new Promise((res, rej) => {
+        const tx = db.transaction(STORES, 'readwrite');
+        for (const op of ops) {
+          const s = tx.objectStore(op.store);
+          if (op.del !== undefined) s.delete(op.del); else s.put(op.put);
+        }
+        tx.oncomplete = () => res(); tx.onerror = tx.onabort = () => rej(tx.error);
+      }),
+    };
+  } catch (e) {
+    return { kind: 'memory', loadAll: async () => ({ categories: [], entries: [] }), write: async () => {} };
+  }
+}
+
+/* ---------- 4. State ---------- */
+let storage = null;
+const state = {
+  ready: false,
+  categories: [], entries: [],
+  today: monthKey(),      // the real current month
+  month: monthKey(),      // the month on screen
+  view: 'month',
+  openCat: null, renaming: null, confirming: null,
+  exportScope: 'month', exportText: '', canSave: true,
+};
+
+const catsOf = (month) => state.categories.filter((c) => c.month === month).sort((a, b) => a.createdAt - b.createdAt);
+const entriesOf = (catId) => state.entries.filter((e) => e.categoryId === catId).sort((a, b) => b.at - a.at);
+const totalsByCat = (month) => {
+  const map = new Map();
+  for (const e of state.entries) if (!month || e.month === month) map.set(e.categoryId, (map.get(e.categoryId) || 0) + e.amount);
+  return map;
+};
+const totalsByMonth = () => {
+  const map = new Map();
+  for (const e of state.entries) map.set(e.month, (map.get(e.month) || 0) + e.amount);
+  return map;
+};
+const knownMonths = () => [...new Set([state.today, ...state.categories.map((c) => c.month)])].sort().reverse();
+
+/* ---------- 5. Actions (the only code that changes data) ---------- */
+async function commit(ops) {
+  for (const op of ops) {
+    const list = state[op.store];
+    if (op.del !== undefined) state[op.store] = list.filter((r) => r.id !== op.del);
+    else {
+      const i = list.findIndex((r) => r.id === op.put.id);
+      if (i >= 0) list[i] = op.put; else list.push(op.put);
+    }
+  }
+  render();
+  try { await storage.write(ops); }
+  catch (e) { toast("Couldn't save to this browser. Storage may be full or blocked."); }
+}
+
+const actions = {
+  addCategory(name, month = state.month) {
+    name = name.trim().slice(0, 40);
+    if (!name) return toast('Type a category name first.');
+    const cats = catsOf(month);
+    if (cats.some((c) => c.name.toLowerCase() === name.toLowerCase())) return toast(`${name} already exists in ${monthLabel(month)}.`);
+    const used = new Set(cats.map((c) => c.color));
+    let color = 0;
+    while (used.has(color) && color < CONFIG.colorCount) color++;
+    if (color >= CONFIG.colorCount) color = cats.length % CONFIG.colorCount;
+    const cat = { id: uid(), month, name, color, createdAt: Date.now() };
+    state.openCat = cat.id;
+    return commit([{ store: 'categories', put: cat }]);
+  },
+  copyCategories(fromMonth, toMonth = state.month) {
+    const now = Date.now();
+    const ops = catsOf(fromMonth).map((c, i) => ({
+      store: 'categories', put: { id: uid(), month: toMonth, name: c.name, color: c.color, createdAt: now + i },
+    }));
+    return commit(ops);
+  },
+  renameCategory(id, name) {
+    name = name.trim().slice(0, 40);
+    const cat = state.categories.find((c) => c.id === id);
+    if (!cat || !name) return toast('Type a name first.');
+    if (catsOf(cat.month).some((c) => c.id !== id && c.name.toLowerCase() === name.toLowerCase())) return toast(`${name} already exists this month.`);
+    state.renaming = null;
+    return commit([{ store: 'categories', put: { ...cat, name } }]);
+  },
+  deleteCategory(id) {
+    const ops = entriesOf(id).map((e) => ({ store: 'entries', del: e.id }));
+    ops.push({ store: 'categories', del: id });
+    state.openCat = null; state.confirming = null;
+    return commit(ops);
+  },
+  /** sign = +1 to add money, -1 to remove it. */
+  addEntry(catId, amountText, note, sign) {
+    const cat = state.categories.find((c) => c.id === catId);
+    const amount = parseAmount(amountText);
+    if (!cat) return;
+    if (amount === null) return toast('Enter an amount greater than 0.');
+    if (sign < 0) {
+      const have = totalsByCat(cat.month).get(catId) || 0;
+      if (amount > have) return toast(have > 0 ? `${cat.name} only has ${money(have)} to remove.` : `${cat.name} has nothing to remove yet.`);
+    }
+    const entry = { id: uid(), categoryId: catId, month: cat.month, amount: sign * amount, note: note.trim().slice(0, 80), at: Date.now() };
+    toast(`${sign > 0 ? 'Added' : 'Removed'} ${money(amount)} ${sign > 0 ? 'to' : 'from'} ${cat.name}`);
+    return commit([{ store: 'entries', put: entry }]);
+  },
+  deleteEntry(id) {
+    return commit([{ store: 'entries', del: id }]);
+  },
+  importData(data) {
+    const okMonth = (m) => /^\d{4}-\d{2}$/.test(m);
+    if (!data || !Array.isArray(data.categories) || !Array.isArray(data.entries)) throw new Error('shape');
+    const cats = data.categories.filter((c) => c && typeof c.id === 'string' && okMonth(c.month) && typeof c.name === 'string')
+      .map((c) => ({ id: c.id, month: c.month, name: c.name.slice(0, 40), color: Number(c.color) % CONFIG.colorCount || 0, createdAt: Number(c.createdAt) || Date.now() }));
+    const ids = new Set([...state.categories.map((c) => c.id), ...cats.map((c) => c.id)]);
+    const entries = data.entries.filter((e) => e && typeof e.id === 'string' && ids.has(e.categoryId) && okMonth(e.month) && Number.isInteger(e.amount))
+      .map((e) => ({ id: e.id, categoryId: e.categoryId, month: e.month, amount: e.amount, note: String(e.note || '').slice(0, 80), at: Number(e.at) || Date.now() }));
+    if (!cats.length && !entries.length) throw new Error('empty');
+    toast(`Imported ${cats.length} categories and ${entries.length} entries.`);
+    return commit([...cats.map((put) => ({ store: 'categories', put })), ...entries.map((put) => ({ store: 'entries', put }))]);
+  },
+};
+
+/* ---------- 6. Exporters (add an object to add a format) ---------- */
+const csvCell = (v) => {
+  let s = String(v ?? '');
+  if (typeof v === 'string' && /^[=+\-@]/.test(s)) s = "'" + s;   // keep spreadsheets from running it as a formula
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+const toCsv = (rows) => rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+const scoped = (scope) => {
+  const inScope = (r) => scope === 'all' || r.month === state.month;
+  return { categories: state.categories.filter(inScope), entries: state.entries.filter(inScope) };
+};
+
+const EXPORTERS = [
+  {
+    id: 'json', label: 'Full backup (JSON)', ext: 'json',
+    hint: 'Everything, in a file you can import back into this app.',
+    build: (d) => JSON.stringify({ app: CONFIG.appId, schema: CONFIG.schema, exportedAt: new Date().toISOString(), currency: CONFIG.currency, ...d }, null, 2),
+  },
+  {
+    id: 'summary', label: 'Category totals (CSV)', ext: 'csv',
+    hint: 'One row per category per month. Opens in Excel or Google Sheets.',
+    build: (d) => {
+      const totals = totalsByCat();
+      const rows = [...d.categories].sort((a, b) => a.month.localeCompare(b.month) || a.createdAt - b.createdAt)
+        .map((c) => [c.month, c.name, (totals.get(c.id) || 0) / 100]);
+      return toCsv([['month', 'category', 'total'], ...rows]);
+    },
+  },
+  {
+    id: 'entries', label: 'Every entry (CSV)', ext: 'csv',
+    hint: 'One row per amount added or removed, with its date and note.',
+    build: (d) => {
+      const names = new Map(state.categories.map((c) => [c.id, c.name]));
+      const rows = [...d.entries].sort((a, b) => a.at - b.at)
+        .map((e) => [e.month, names.get(e.categoryId) || '', new Date(e.at).toISOString(), e.amount / 100, e.note]);
+      return toCsv([['month', 'category', 'recorded_at', 'amount', 'note'], ...rows]);
+    },
+  },
+];
+
+/* File saving: inside Claude it goes through the downloads capability (the
+   viewer confirms each save). Hosted anywhere else it is a normal download. */
+const inClaude = !!(window.claude && window.claude.use);
+const downloadsReady = (async () => {
+  try { return inClaude ? await window.claude.use('downloads') : null; } catch (e) { return null; }
+})();
+downloadsReady.then((dl) => { if (inClaude && !dl) { state.canSave = false; if (state.view === 'export') render(); } });
+
+async function saveFile(filename, text, mime) {
+  const dl = await downloadsReady;
+  if (dl) {
+    try { await dl.save({ filename, data: text }); toast(`Saved ${filename}`); }
+    catch (e) { toast(e && e.code === 'declined' ? 'Save cancelled.' : "Couldn't save the file here. Use Copy instead."); }
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`Saved ${filename}`);
+}
+function copyText(text) {
+  const fallback = () => { state.exportText = text; render(); const t = $('#export-out'); if (t) { t.focus(); t.select(); } toast('Select the text below and copy it.'); };
+  try { navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard.'), fallback); } catch (e) { fallback(); }
+}
+
+/* ---------- 7. Views (add an object to add a screen) ---------- */
+const VIEWS = {
+  month: { label: 'Month', render: renderMonth },
+  months: { label: 'All months', render: renderMonths },
+  export: { label: 'Export', render: renderExport },
+};
+
+function renderMonth() {
+  const m = state.month, isNow = m === state.today;
+  const cats = catsOf(m), totals = totalsByCat(m);
+  const total = cats.reduce((s, c) => s + (totals.get(c.id) || 0), 0);
+  const days = daysIn(m), day = new Date().getDate();
+  const perDay = total > 0 ? ` · ${money(Math.round(total / (isNow ? day : days)))} a day${isNow ? ' so far' : ''}` : '';
+  const sub = isNow ? `Day ${day} of ${days}${perDay}` : `${days} days${perDay}`;
+
+  const bar = cats.filter((c) => (totals.get(c.id) || 0) > 0)
+    .map((c) => `<span style="--c:var(--c${c.color});flex:${totals.get(c.id)} 1 0"></span>`).join('');
+  const barLabel = cats.map((c) => `${c.name} ${money(totals.get(c.id) || 0)}`).join(', ') || 'No spending yet';
+
+  let list;
+  if (!state.ready) list = `<p class="empty">Opening your ledger…</p>`;
+  else if (!cats.length) list = `<p class="empty">No categories in ${esc(monthLabel(m))} yet. Every month starts at ${money(0)}. Add a category below to begin.</p>`;
+  else list = `<ul>${cats.map((c) => renderCategory(c, totals.get(c.id) || 0, total)).join('')}</ul>`;
+
+  const prev = state.categories.map((c) => c.month).filter((x) => x < m).sort().pop();
+  const names = new Set(cats.map((c) => c.name.toLowerCase()));
+  const chips = cats.length ? [] : CONFIG.suggested.filter((n) => !names.has(n.toLowerCase()));
+
+  return `
+    <header class="month-head">
+      <button class="icon-btn" data-action="shift" data-n="-1" aria-label="Previous month">‹</button>
+      <h1>${esc(monthLabel(m))}</h1>
+      <button class="icon-btn" data-action="shift" data-n="1" aria-label="Next month" ${isNow ? 'disabled' : ''}>›</button>
+    </header>
+    ${isNow ? '' : `<button class="link-btn" data-action="goto-month" data-month="${state.today}">Back to ${esc(monthLabel(state.today))}</button>`}
+    <section class="total" aria-label="Month total">
+      <p class="label">${isNow ? 'Spent this month' : 'Spent'}</p>
+      <p class="figure">${money(total)}</p>
+      <p class="sub">${sub}</p>
+      <div class="share-bar" role="img" aria-label="${esc(barLabel)}">${bar}</div>
+    </section>
+    <section class="cats" aria-label="Categories">${list}</section>
+    <section class="add-cat">
+      <form data-form="category">
+        <label class="field"><input id="new-category" name="name" placeholder="New category" maxlength="40" autocomplete="off" aria-label="New category name"></label>
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      ${state.ready && !cats.length && prev ? `<button class="btn" data-action="copy-cats" data-month="${prev}">Use ${esc(monthLabel(prev, { month: 'long' }))}'s categories</button>` : ''}
+      ${state.ready && chips.length ? `<div class="chips">${chips.map((n) => `<button class="chip" data-action="suggest" data-name="${esc(n)}">+ ${esc(n)}</button>`).join('')}</div>` : ''}
+    </section>`;
+}
+
+function renderCategory(c, sum, monthTotal) {
+  const open = state.openCat === c.id;
+  const share = monthTotal > 0 && sum > 0 ? `${Math.round((sum / monthTotal) * 100)}%` : '';
+  let panel = '';
+  if (open) {
+    const entries = entriesOf(c.id);
+    const rows = entries.length
+      ? `<ul class="entries">${entries.map((e) => `
+          <li>
+            <span class="e-amt ${e.amount < 0 ? 'minus' : ''}">${e.amount < 0 ? '−' : '+'}${money(Math.abs(e.amount))}</span>
+            <span class="e-meta">${e.note ? esc(e.note) + ' · ' : ''}${esc(stamp(e.at))}</span>
+            <button class="x-btn" data-action="del-entry" data-id="${e.id}" aria-label="Delete this entry">×</button>
+          </li>`).join('')}</ul>`
+      : `<p class="note">Nothing added yet.</p>`;
+    let foot;
+    if (state.renaming === c.id) {
+      foot = `<form class="panel-foot" data-form="rename" data-id="${c.id}">
+          <label class="field"><input id="rename-${c.id}" name="name" value="${esc(c.name)}" maxlength="40" autocomplete="off" aria-label="Category name"></label>
+          <button class="btn small primary" type="submit">Save</button>
+          <button class="btn small" type="button" data-action="cancel">Cancel</button>
+        </form>`;
+    } else if (state.confirming === c.id) {
+      foot = `<div class="panel-foot">
+          <p>Delete ${esc(c.name)} and its ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}?</p>
+          <button class="btn small danger" data-action="delete-cat" data-id="${c.id}">Delete</button>
+          <button class="btn small" data-action="cancel">Keep</button>
+        </div>`;
+    } else {
+      foot = `<div class="panel-foot">
+          <button class="btn small" data-action="rename" data-id="${c.id}">Rename</button>
+          <button class="btn small danger" data-action="confirm-delete" data-id="${c.id}">Delete category</button>
+        </div>`;
+    }
+    panel = `<div class="panel">
+        <form class="entry-form" data-form="entry" data-id="${c.id}">
+          <label class="field amount"><span class="unit">${esc(currencySymbol)}</span>
+            <input id="amt-${c.id}" name="amount" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Amount for ${esc(c.name)}"></label>
+          <label class="field"><input id="note-${c.id}" name="note" placeholder="Note (optional)" maxlength="80" autocomplete="off" aria-label="Note"></label>
+          <div class="row">
+            <button class="btn" type="button" data-action="remove-money" data-id="${c.id}">− Remove</button>
+            <button class="btn primary" type="submit">+ Add</button>
+          </div>
+        </form>
+        ${rows}
+        ${foot}
+      </div>`;
+  }
+  return `<li class="cat ${open ? 'is-open' : ''}" style="--c:var(--c${c.color})">
+      <button class="cat-row" data-action="toggle-cat" data-id="${c.id}" aria-expanded="${open}">
+        <span class="dot"></span><span class="cat-name">${esc(c.name)}</span>
+        <span class="cat-share">${share}</span><span class="cat-amt">${money(sum)}</span>
+      </button>${panel}
+    </li>`;
+}
+
+function renderMonths() {
+  const totals = totalsByMonth();
+  const months = knownMonths();
+  const max = Math.max(1, ...months.map((m) => totals.get(m) || 0));
+  const years = [...new Set(months.map((m) => m.slice(0, 4)))];
+  return `<h1 class="page-title">All months</h1>` + years.map((y) => {
+    const ms = months.filter((m) => m.startsWith(y));
+    const yearTotal = ms.reduce((s, m) => s + (totals.get(m) || 0), 0);
+    return `<section class="year">
+        <div class="year-head"><h2>${y}</h2><span>${money(yearTotal)} across ${ms.length} ${ms.length === 1 ? 'month' : 'months'}</span></div>
+        <ul class="cats">${ms.map((m) => {
+          const t = totals.get(m) || 0, n = catsOf(m).length;
+          return `<li class="cat"><button class="m-row" data-action="goto-month" data-month="${m}">
+              <span class="m-name">${esc(monthLabel(m, { month: 'long' }))}${m === state.today ? '<small>This month</small>' : ''}</span>
+              <span class="m-amt">${money(t)}</span>
+              <span class="m-bar"><i style="width:${Math.max(0, (t / max) * 100).toFixed(1)}%"></i></span>
+              <span class="m-meta">${n} ${n === 1 ? 'category' : 'categories'}</span>
+            </button></li>`;
+        }).join('')}</ul>
+      </section>`;
+  }).join('');
+}
+
+function renderExport() {
+  const d = scoped(state.exportScope);
+  const empty = !d.categories.length;
+  return `<h1 class="page-title">Export</h1>
+    <section class="block">
+      <div class="seg" role="group" aria-label="What to export">
+        <button data-action="scope" data-scope="month" aria-pressed="${state.exportScope === 'month'}">${esc(monthLabel(state.month))}</button>
+        <button data-action="scope" data-scope="all" aria-pressed="${state.exportScope === 'all'}">All months</button>
+      </div>
+      <div class="cats">${EXPORTERS.map((x) => `
+        <div class="x-item">
+          <div><strong>${esc(x.label)}</strong><p>${esc(x.hint)}</p></div>
+          <div class="row">
+            ${state.canSave ? `<button class="btn primary" data-action="save" data-id="${x.id}" ${empty ? 'disabled' : ''}>Save file</button>` : ''}
+            <button class="btn" data-action="copy" data-id="${x.id}" ${empty ? 'disabled' : ''}>Copy</button>
+          </div>
+        </div>`).join('')}</div>
+      ${empty ? `<p class="note">Nothing to export for this selection yet.</p>` : `<p class="note">${d.categories.length} categories and ${d.entries.length} entries selected.</p>`}
+      ${state.exportText ? `<textarea class="out" id="export-out" readonly aria-label="Export text">${esc(state.exportText)}</textarea>` : ''}
+    </section>
+    <section class="block">
+      <h2>Import a backup</h2>
+      <label class="file"><span class="note">Pick a JSON backup made by this app. It is merged with what is already here.</span>
+        <input type="file" id="import-file" accept="application/json,.json"></label>
+    </section>
+    <p class="note">${storage && storage.kind === 'indexeddb'
+      ? 'Your data is stored in this browser on this device only. Clearing site data erases it, so save a backup now and then.'
+      : 'This browser is blocking storage, so nothing will be kept after you close this page. Export before you leave.'}</p>`;
+}
+
+function render() {
+  if (!VIEWS[state.view]) state.view = 'month';
+  $('#view').innerHTML = VIEWS[state.view].render();
+  $('#tabs').innerHTML = Object.entries(VIEWS)
+    .map(([id, v]) => `<a href="#${id}" ${id === state.view ? 'aria-current="page"' : ''}>${esc(v.label)}</a>`).join('');
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* ---------- 8. Events ---------- */
+const exportName = (x) => `${CONFIG.appId}-${state.exportScope === 'all' ? 'all' : state.month}-${x.id}.${x.ext}`;
+const resetPanel = () => { state.renaming = null; state.confirming = null; };
+
+const clicks = {
+  shift: (el) => {
+    const next = shiftMonth(state.month, Number(el.dataset.n));
+    if (next > state.today) return;
+    state.month = next; state.openCat = null; resetPanel(); render();
+  },
+  'goto-month': (el) => { state.month = el.dataset.month; state.openCat = null; resetPanel(); location.hash = 'month'; state.view = 'month'; render(); window.scrollTo(0, 0); },
+  'toggle-cat': (el) => { state.openCat = state.openCat === el.dataset.id ? null : el.dataset.id; resetPanel(); render(); },
+  'remove-money': (el) => submitEntry(el.closest('form'), -1),
+  'del-entry': (el) => actions.deleteEntry(el.dataset.id),
+  rename: (el) => { state.renaming = el.dataset.id; state.confirming = null; render(); const i = $(`#rename-${CSS.escape(el.dataset.id)}`); if (i) { i.focus(); i.select(); } },
+  'confirm-delete': (el) => { state.confirming = el.dataset.id; state.renaming = null; render(); },
+  'delete-cat': (el) => actions.deleteCategory(el.dataset.id),
+  cancel: () => { resetPanel(); render(); },
+  suggest: (el) => actions.addCategory(el.dataset.name),
+  'copy-cats': (el) => actions.copyCategories(el.dataset.month),
+  scope: (el) => { state.exportScope = el.dataset.scope; state.exportText = ''; render(); },
+  save: (el) => { const x = EXPORTERS.find((e) => e.id === el.dataset.id); saveFile(exportName(x), x.build(scoped(state.exportScope)), x.ext === 'csv' ? 'text/csv' : 'application/json'); },
+  copy: (el) => { const x = EXPORTERS.find((e) => e.id === el.dataset.id); copyText(x.build(scoped(state.exportScope))); },
+};
+
+function submitEntry(form, sign) {
+  const id = form.dataset.id;
+  const before = state.entries.length;
+  actions.addEntry(id, form.elements.amount.value, form.elements.note.value, sign);
+  if (state.entries.length !== before) { const i = $(`#amt-${CSS.escape(id)}`); if (i) i.focus(); }
+}
+
+document.addEventListener('click', (ev) => {
+  const el = ev.target.closest('[data-action]');
+  if (el && !el.disabled && clicks[el.dataset.action]) clicks[el.dataset.action](el);
+});
+document.addEventListener('submit', (ev) => {
+  const form = ev.target.closest('[data-form]');
+  if (!form) return;
+  ev.preventDefault();
+  if (form.dataset.form === 'entry') submitEntry(form, 1);
+  if (form.dataset.form === 'category') actions.addCategory(form.elements.name.value);
+  if (form.dataset.form === 'rename') actions.renameCategory(form.dataset.id, form.elements.name.value);
+});
+document.addEventListener('change', (ev) => {
+  if (ev.target.id !== 'import-file' || !ev.target.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { actions.importData(JSON.parse(reader.result)); }
+    catch (e) { toast("That file isn't a Monthly Ledger backup. Pick a JSON file exported from this app."); }
+  };
+  reader.onerror = () => toast("Couldn't read that file.");
+  reader.readAsText(ev.target.files[0]);
+});
+
+function route() {
+  const id = location.hash.slice(1);
+  state.view = VIEWS[id] ? id : 'month';
+  state.exportText = '';
+  render();
+}
+window.addEventListener('hashchange', route);
+
+/* A new month starts on the 1st. If the app is left open across midnight,
+   move to the fresh month (which starts with no categories and a zero total). */
+function checkRollover() {
+  const now = monthKey();
+  if (now === state.today) return;
+  if (state.month === state.today) { state.month = now; state.openCat = null; }
+  state.today = now;
+  render();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkRollover(); });
+setInterval(checkRollover, 60000);
+
+/* ---------- 9. Boot ---------- */
+route();
+(async () => {
+  storage = await createStorage();
+  try { Object.assign(state, await storage.loadAll()); }
+  catch (e) { toast("Couldn't read saved data."); }
+  state.ready = true;
+  render();
+  if (storage.kind === 'memory') toast('This browser is blocking storage. Data will not be kept.');
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
