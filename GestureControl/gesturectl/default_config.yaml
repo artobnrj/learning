@@ -1,0 +1,109 @@
+# gesturectl default configuration.
+# Copy to ~/.config/gesturectl/config.yaml (or pass --config) and edit.
+# Your file is deep-merged over this one, so you only need to list changes.
+# Lists (bindings) are replaced wholesale, not merged.
+
+camera:
+  index: 0            # which webcam
+  width: 960
+  height: 540
+  fps: 30
+  mirror: true        # selfie view: moving your hand right moves it right on screen
+
+tracking:
+  model_path: null    # null = auto-download MediaPipe hand_landmarker.task
+  max_hands: 2
+  min_detection_confidence: 0.6
+  min_presence_confidence: 0.5
+  min_tracking_confidence: 0.5
+
+control:
+  start_mode: desktop
+  start_paused: false
+  min_hand_size: 0.07     # palm length as a fraction of frame height; ignores people in the background
+  action_cooldown: 0.35   # seconds before the same action may fire again
+  hold_grace: 0.15        # a hold survives pose dropouts shorter than this
+  still_speed: 2.0        # holds only count while the hand moves slower than this (palm lengths/s)
+
+swipe:
+  window: 0.30
+  min_distance: 1.1       # palm lengths
+  min_speed: 3.5          # palm lengths / second
+  axis_ratio: 1.8
+  refractory: 0.45
+  return_block: 0.9
+
+scroll:
+  deadzone: 0.25
+  gain: 14.0
+  exponent: 1.6
+  invert: false
+
+dial:
+  step_deg: 18
+
+mouse:
+  region: [0.22, 0.18, 0.78, 0.68]   # x0, y0, x1, y1 of the camera frame mapped onto the whole screen
+  min_cutoff: 0.8                    # One Euro filter: lower = steadier
+  beta: 4.0                          # One Euro filter: higher = less lag on fast moves
+  click_freeze: 0.12                 # seconds the cursor freezes as a pinch starts (stops click drift)
+
+actions:
+  allow_run: false    # allow `run:` shell-command actions in bindings
+
+custom_gestures: ~/.config/gesturectl/custom_gestures.npz
+
+# ---------------------------------------------------------------------------
+# Bindings
+#   gesture: <pose> | [poses]   single-hand pose (see `gesturectl gestures`)
+#   two_hands: <pose>           both hands showing the same pose
+# plus exactly one trigger:
+#   hold: <s>                   fire once after the pose is held still for s seconds
+#   repeat: <s>                 fire at once, then every s seconds while held
+#   tap: <s>                    pose shown then released within s seconds
+#   swipe: up|down|left|right   flick the hand while showing the pose
+#   joystick: vertical          scroll proportionally to distance from where the pose began
+#   dial: true                  rotate the hand like a knob -> cw / ccw actions
+#   zoom: true                  (two_hands) spread / squeeze -> in / out actions
+#   mouse: true                 air-mouse (see mouse: above)
+# action: one action or a list. Internal actions: toggle_pause, next_mode, mode:<name>
+# except_modes: [..]          (global bindings) switch the binding off in these modes
+# ---------------------------------------------------------------------------
+
+global:                          # active in every mode
+  - {gesture: shaka, hold: 1.0, action: toggle_pause, when_paused: true}
+  - {gesture: L, hold: 1.0, action: next_mode}
+  - {gesture: fist, hold: 2.5, action: sleep, except_modes: [mouse]}   # fist = clutch in mouse mode
+  - {two_hands: open_palm, hold: 0.6, action: show_desktop}
+  - {two_hands: L, hold: 0.4, action: screenshot}
+  - {two_hands: pinch, zoom: true, in: zoom_in, out: zoom_out}
+
+modes:
+  desktop:
+    - {gesture: open_palm, swipe: up, action: task_view}
+    - {gesture: open_palm, swipe: down, action: minimize_window}
+    - {gesture: open_palm, swipe: left, action: next_desktop}
+    - {gesture: open_palm, swipe: right, action: prev_desktop}
+    - {gesture: four, swipe: left, action: next_tab}
+    - {gesture: four, swipe: right, action: prev_tab}
+    - {gesture: peace, joystick: vertical, action: scroll}
+    - {gesture: three, hold: 0.8, action: close_window}
+    - {gesture: ok, hold: 0.8, action: maximize_window}
+    - {gesture: point, hold: 0.9, action: switch_app}
+    - {gesture: thumbs_up, hold: 0.5, action: play_pause}
+    - {gesture: thumbs_down, hold: 0.6, action: mute}
+    - {gesture: pinch, dial: true, cw: volume_up, ccw: volume_down}
+    - {gesture: rock, hold: 1.0, action: ["open:https://www.instagram.com/reels/", "mode:reels"]}
+
+  reels:
+    - {gesture: [open_palm, four, point], swipe: up, action: reels_next}
+    - {gesture: [open_palm, four, point], swipe: down, action: reels_prev}
+    - {gesture: thumbs_up, hold: 0.4, action: like}
+    - {gesture: open_palm, hold: 0.8, action: click_center}
+    - {gesture: peace, joystick: vertical, action: scroll}
+    - {gesture: pinch, dial: true, cw: volume_up, ccw: volume_down}
+    - {gesture: three, hold: 0.8, action: [close_tab, "mode:desktop"]}
+
+  mouse:
+    - {mouse: true, clutch: fist}
+    - {gesture: peace, joystick: vertical, action: scroll}

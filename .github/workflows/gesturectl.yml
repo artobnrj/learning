@@ -1,0 +1,24 @@
+name: gesturectl
+
+on:
+  push:
+    paths: ["GestureControl/**", ".github/workflows/gesturectl.yml"]
+  pull_request:
+    paths: ["GestureControl/**", ".github/workflows/gesturectl.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GestureControl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: System libraries (MediaPipe needs EGL/GLES; Xvfb for the end-to-end test)
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2 libgl1 xvfb
+      - run: pip install -r requirements.txt
+      - name: Tests (unit + real-photo + video-to-keystroke end-to-end)
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" python -m pytest -q
